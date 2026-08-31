@@ -547,17 +547,20 @@
   }
 
         .contenedor {
-            width: min(100%, 1500px);
-            position: relative;
-            margin: 0 auto;
-        }
+    width: min(100%, 1500px);
+    position: relative;
+    margin: 0 auto;
+    text-align: center; /* NUEVO: centra el svg adentro */
+}
 
-        .contenedor svg {
-            width: 450px;
-            height: auto;
-            overflow: visible;
-        }
-
+  .contenedor svg {
+    display: block;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 450px;
+    height: auto;
+    overflow: visible;
+}
         /* =========================
        LOGO
     ========================= */
@@ -758,6 +761,29 @@
   .qr-copy { color: var(--silver-light); font-size: 15px; max-width: 42ch; font-weight: 400; }
 
 
+#music-toggle{
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 50;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1px solid var(--silver-medium);
+  background: var(--navy-panel);
+  color: var(--silver-shine);
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--glow-silver);
+  backdrop-filter: blur(8px);
+  transition: transform 0.3s ease;
+}
+#music-toggle:hover{ transform: scale(1.1); }
+#music-toggle.playing{ animation: spin 4s linear infinite; }
+@keyframes spin{ from{ transform: rotate(0deg);} to{ transform: rotate(360deg);} }
 </style>
 </head>
 <body>
@@ -765,6 +791,10 @@
     
 <!-- Canvas para el efecto de chispas/glitter flotante -->
 <canvas id="glitter-canvas"></canvas>
+<audio id="bg-music" loop>
+  <source src="cancion-isa.mp3" type="audio/mpeg">
+</audio>
+<button id="music-toggle" aria-label="Reproducir música">🎵</button>
 
 <section class="hero">
   <div class="hero-figure" aria-hidden="true">
@@ -1279,6 +1309,43 @@
   }
   wireButton('form-btn', rsvpFormUrl);
   wireButton('song-btn', songFormUrl);
+
+
+// ---------- MÚSICA DE FONDO (autoplay en primera interacción) ----------
+const musicBtn = document.getElementById('music-toggle');
+const bgMusic = document.getElementById('bg-music');
+let isPlaying = false;
+let autoStarted = false;
+
+function startMusic() {
+  if (autoStarted) return;
+  autoStarted = true;
+  bgMusic.play().then(() => {
+    isPlaying = true;
+    musicBtn.textContent = '⏸';
+    musicBtn.classList.add('playing');
+  }).catch(() => {
+    // El navegador lo bloqueó igual, no pasa nada, queda el botón manual
+  });
+}
+
+// Se dispara con el primer clic, touch o scroll en la página
+['click', 'touchstart', 'scroll'].forEach(evt => {
+  document.addEventListener(evt, startMusic, { once: true });
+});
+
+musicBtn.addEventListener('click', () => {
+  if (isPlaying) {
+    bgMusic.pause();
+    musicBtn.textContent = '🎵';
+    musicBtn.classList.remove('playing');
+  } else {
+    bgMusic.play();
+    musicBtn.textContent = '⏸';
+    musicBtn.classList.add('playing');
+  }
+  isPlaying = !isPlaying;
+});
 </script>
 
 </body>
