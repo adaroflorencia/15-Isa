@@ -729,6 +729,7 @@
   .carousel-track {
     display: flex; overflow-x: auto; scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    scroll-behavior: smooth;
   }
   .carousel-track::-webkit-scrollbar { display: none; }
   .carousel-slide {
@@ -744,8 +745,30 @@
   .carousel-dot {
       width: 8px; height: 8px; border-radius: 50%;
       background: rgba(255,255,255,0.3); transition: all 0.3s;
+      cursor: pointer;
   }
-  .carousel-dot.active { background: var(--silver-white); box-shadow: var(--glow-white-intense); transform: scale(1.3); }
+  .carousel-dot.active { background: var(--silver-shine); box-shadow: var(--glow-silver); transform: scale(1.3); }
+
+  /* Flechas prev/next (visibles en desktop con hover, siempre visibles en mobile) */
+  .carousel-arrow{
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    background: rgba(5,10,16,0.55);
+    border: 1px solid var(--silver-medium);
+    color: var(--silver-shine);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    z-index: 5;
+    backdrop-filter: blur(4px);
+    transition: background 0.3s ease, transform 0.3s ease;
+    font-size: 18px;
+  }
+  .carousel-arrow:hover{ background: rgba(5,10,16,0.85); }
+  .carousel-arrow.prev{ left: 14px; }
+  .carousel-arrow.next{ right: 14px; }
 
     /* ---------- QR DRIVE ---------- */
   .qr-container { display: flex; flex-direction: column; align-items: center; gap: 20px; text-align: center; }
@@ -783,17 +806,66 @@
 #music-toggle:hover{ transform: scale(1.1); }
 #music-toggle.playing{ animation: spin 4s linear infinite; }
 @keyframes spin{ from{ transform: rotate(0deg);} to{ transform: rotate(360deg);} }
+
+/* Brillo de atención en el botón de música hasta que se reproduzca por primera vez */
+#music-toggle.attention{
+  animation: musicAttention 2s ease-in-out infinite;
+}
+@keyframes musicAttention{
+  0%, 100%{ box-shadow: var(--glow-silver); }
+  50%{ box-shadow: 0 0 26px rgba(127,176,234,0.65); }
+}
+
+/* Globo de texto que invita a tocar para activar el sonido */
+#music-hint{
+  position: fixed;
+  bottom: calc(86px + env(safe-area-inset-bottom));
+  right: calc(20px + env(safe-area-inset-right));
+  z-index: 49;
+  max-width: 200px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  background: var(--navy-panel);
+  border: 1px solid var(--silver-medium);
+  color: var(--silver-light);
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: var(--glow-silver);
+  backdrop-filter: blur(8px);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  pointer-events: none;
+}
+#music-hint.visible{
+  opacity: 1;
+  transform: translateY(0);
+}
+#music-hint::after{
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  right: 22px;
+  width: 12px; height: 12px;
+  background: var(--navy-panel);
+  border-right: 1px solid var(--silver-medium);
+  border-bottom: 1px solid var(--silver-medium);
+  transform: rotate(45deg);
+}
+@media (max-width: 768px){
+  .carousel-arrow{ display: none; }
+}
 </style>
 </head>
 <body>
 
-    
 <!-- Canvas para el efecto de chispas/glitter flotante -->
 <canvas id="glitter-canvas"></canvas>
-<audio id="bg-music" loop>
+<audio id="bg-music" loop preload="auto">
   <source src="cancion-isa.mp3" type="audio/mpeg">
 </audio>
-<button id="music-toggle" aria-label="Reproducir música">🎵</button>
+<div id="music-hint">🎵 Tocá en cualquier lado para activar la música</div>
+<button id="music-toggle" class="attention" aria-label="Reproducir música">🎵</button>
 
 <section class="hero">
   <div class="hero-figure" aria-hidden="true">
@@ -1040,30 +1112,30 @@
       <h2 class="section-title">Galería</h2>
     </div>
     <div class="carousel-container glass-panel">
-        <div class="carousel-track">
+        
+        <div class="carousel-track" id="carousel-track">
           <!-- Fotos de relleno en Blanco y Negro -->
           <div class="carousel-slide">
-                <img src="img/foto_1.jpg" alt="Foto de Isabel 3" loading="lazy">
+                <img src="img/foto_1.jpg" alt="Foto de Isabel 1" loading="lazy">
             </div>
             <div class="carousel-slide">
-                <img src="img/foto4_4.jpg" alt="Foto de Isabel 3" loading="lazy">
+                <img src="img/foto4_4.jpg" alt="Foto de Isabel 2" loading="lazy">
             </div>
             <div class="carousel-slide">
                 <img src="img/foto3_3.jpg" alt="Foto de Isabel 3" loading="lazy">
             </div>
             <div class="carousel-slide">
-              <img src="img/foto_5.jpg" alt="Foto de Isabel 2" loading="lazy">
+              <img src="img/foto_5.jpg" alt="Foto de Isabel 4" loading="lazy">
             </div>
             <div class="carousel-slide">
-              <img src="img/foto_6.jpg" alt="Foto de Isabel 2" loading="lazy">
+              <img src="img/foto_6.jpg" alt="Foto de Isabel 5" loading="lazy">
             </div>
             
         </div>
+        
     </div>
-    <div class="carousel-nav">
-        <span class="carousel-dot active"></span>
-        <span class="carousel-dot"></span>
-        <span class="carousel-dot"></span>
+    <div class="carousel-nav" id="carousel-nav">
+        <!-- Los dots se generan dinámicamente en JS según la cantidad real de fotos -->
     </div>
   </section>
 
@@ -1320,40 +1392,109 @@
   wireButton('song-btn', songFormUrl);
 
 
-// ---------- MÚSICA DE FONDO (autoplay en primera interacción) ----------
+// ---------- MÚSICA DE FONDO ----------
+// Sin pantalla de bienvenida: la música arranca con el primer click/touch
+// en cualquier parte de la página (gesto de usuario válido para el navegador),
+// o manualmente tocando el botón flotante.
 const musicBtn = document.getElementById('music-toggle');
 const bgMusic = document.getElementById('bg-music');
+const musicHint = document.getElementById('music-hint');
 let isPlaying = false;
 let autoStarted = false;
 
-function startMusic() {
-  if (autoStarted) return;
-  autoStarted = true;
+function playMusic(){
   bgMusic.play().then(() => {
     isPlaying = true;
     musicBtn.textContent = '⏸';
     musicBtn.classList.add('playing');
-  }).catch(() => {
-    // El navegador lo bloqueó igual, no pasa nada, queda el botón manual
+    musicBtn.classList.remove('attention');
+    hideHint();
+  }).catch((err) => {
+    // Si el navegador igual lo bloquea, queda el botón manual disponible.
+    console.log('No se pudo iniciar la música automáticamente:', err);
   });
 }
 
-// Se dispara con el primer clic, touch o scroll en la página
-['click', 'touchstart', 'scroll'].forEach(evt => {
-  document.addEventListener(evt, startMusic, { once: true });
+function hideHint(){
+  musicHint.classList.remove('visible');
+}
+
+function startMusicOnce(){
+  if (autoStarted) return;
+  autoStarted = true;
+  playMusic();
+}
+
+// Mostrar el globo de texto un momento después de cargar, y ocultarlo solo
+// después de unos segundos si nadie interactuó.
+window.addEventListener('load', () => {
+  setTimeout(() => musicHint.classList.add('visible'), 1200);
+  setTimeout(hideHint, 9000);
 });
 
-musicBtn.addEventListener('click', () => {
+// Primer click o touch en cualquier parte de la página activa la música,
+// sin bloquear la vista ni tapar el contenido.
+['click', 'touchstart', 'keydown'].forEach(evt => {
+  document.addEventListener(evt, startMusicOnce, { once: true });
+});
+
+musicBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  autoStarted = true;
   if (isPlaying) {
     bgMusic.pause();
     musicBtn.textContent = '🎵';
     musicBtn.classList.remove('playing');
   } else {
-    bgMusic.play();
-    musicBtn.textContent = '⏸';
-    musicBtn.classList.add('playing');
+    playMusic();
   }
   isPlaying = !isPlaying;
+});
+
+// ---------- CARRUSEL ----------
+const track = document.getElementById('carousel-track');
+const slides = track.querySelectorAll('.carousel-slide');
+const navContainer = document.getElementById('carousel-nav');
+const prevBtn = document.getElementById('carousel-prev');
+const nextBtn = document.getElementById('carousel-next');
+let currentSlide = 0;
+
+// Generar los dots dinámicamente según la cantidad real de fotos
+function buildDots(){
+  navContainer.innerHTML = '';
+  slides.forEach((_, i) => {
+    const dot = document.createElement('span');
+    dot.className = 'carousel-dot' + (i === 0 ? ' active' : '');
+    dot.addEventListener('click', () => goToSlide(i));
+    navContainer.appendChild(dot);
+  });
+}
+
+function goToSlide(index){
+  currentSlide = Math.max(0, Math.min(index, slides.length - 1));
+  track.scrollTo({ left: track.clientWidth * currentSlide, behavior: 'smooth' });
+}
+
+function updateActiveDot(){
+  const index = Math.round(track.scrollLeft / track.clientWidth);
+  currentSlide = index;
+  navContainer.querySelectorAll('.carousel-dot').forEach((dot, i) => {
+    dot.classList.toggle('active', i === index);
+  });
+}
+
+buildDots();
+track.addEventListener('scroll', () => {
+  clearTimeout(track._scrollTimeout);
+  track._scrollTimeout = setTimeout(updateActiveDot, 80);
+});
+
+prevBtn.addEventListener('click', () => goToSlide(currentSlide - 1));
+nextBtn.addEventListener('click', () => goToSlide(currentSlide + 1));
+
+// Recalcular posición si cambia el tamaño de ventana (por ejemplo, al rotar el celular)
+window.addEventListener('resize', () => {
+  track.scrollTo({ left: track.clientWidth * currentSlide });
 });
 </script>
 
