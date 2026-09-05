@@ -852,9 +852,6 @@
   border-bottom: 1px solid var(--silver-medium);
   transform: rotate(45deg);
 }
-@media (max-width: 768px){
-  .carousel-arrow{ display: none; }
-}
 </style>
 </head>
 <body>
@@ -1112,7 +1109,6 @@
       <h2 class="section-title">Galería</h2>
     </div>
     <div class="carousel-container glass-panel">
-        
         <div class="carousel-track" id="carousel-track">
           <!-- Fotos de relleno en Blanco y Negro -->
           <div class="carousel-slide">
@@ -1132,7 +1128,6 @@
             </div>
             
         </div>
-        
     </div>
     <div class="carousel-nav" id="carousel-nav">
         <!-- Los dots se generan dinámicamente en JS según la cantidad real de fotos -->
@@ -1400,47 +1395,45 @@ const musicBtn = document.getElementById('music-toggle');
 const bgMusic = document.getElementById('bg-music');
 const musicHint = document.getElementById('music-hint');
 let isPlaying = false;
-let autoStarted = false;
-
-function playMusic(){
-  bgMusic.play().then(() => {
-    isPlaying = true;
-    musicBtn.textContent = '⏸';
-    musicBtn.classList.add('playing');
-    musicBtn.classList.remove('attention');
-    hideHint();
-  }).catch((err) => {
-    // Si el navegador igual lo bloquea, queda el botón manual disponible.
-    console.log('No se pudo iniciar la música automáticamente:', err);
-  });
-}
+let musicUnlocked = false;
 
 function hideHint(){
   musicHint.classList.remove('visible');
 }
 
-function startMusicOnce(){
-  if (autoStarted) return;
-  autoStarted = true;
+function playMusic(){
+  bgMusic.play().then(() => {
+    musicUnlocked = true;
+    isPlaying = true;
+    musicBtn.textContent = '⏸';
+    musicBtn.classList.add('playing');
+    musicBtn.classList.remove('attention');
+    hideHint();
+    ['click', 'touchstart', 'touchend', 'keydown'].forEach(evt => {
+      document.removeEventListener(evt, tryAutoPlay);
+    });
+  }).catch((err) => {
+    console.log('Intento de reproducción bloqueado, se reintentará:', err);
+  });
+}
+
+function tryAutoPlay(){
+  if (musicUnlocked) return;
   playMusic();
 }
 
-// Mostrar el globo de texto un momento después de cargar, y ocultarlo solo
-// después de unos segundos si nadie interactuó.
+['click', 'touchstart', 'touchend', 'keydown'].forEach(evt => {
+  document.addEventListener(evt, tryAutoPlay);
+});
+
 window.addEventListener('load', () => {
   setTimeout(() => musicHint.classList.add('visible'), 1200);
   setTimeout(hideHint, 9000);
 });
 
-// Primer click o touch en cualquier parte de la página activa la música,
-// sin bloquear la vista ni tapar el contenido.
-['click', 'touchstart', 'keydown'].forEach(evt => {
-  document.addEventListener(evt, startMusicOnce, { once: true });
-});
 
 musicBtn.addEventListener('click', (e) => {
   e.stopPropagation();
-  autoStarted = true;
   if (isPlaying) {
     bgMusic.pause();
     musicBtn.textContent = '🎵';
